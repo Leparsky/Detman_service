@@ -1,0 +1,26 @@
+import requests  # осуществляет работу с HTTP-запросами
+import urllib.request  # библиотека HTTP
+from lxml import html  # библиотека для обработки разметки xml и html, импортируем только для работы с html
+import re  # осуществляет работу с регулярными выражениями
+from bs4 import BeautifulSoup  # осуществляет синтаксический разбор документов HTML
+BASE_URL = 'http://www.detkityumen.ru/'
+client = requests.session()
+
+# Retrieve the CSRF token first
+client.get(BASE_URL)  # sets cookie
+
+if 'csrftoken' in client.cookies:
+    # Django 1.6 and up
+    csrftoken = client.cookies['csrftoken']
+else:
+    # older versions
+    csrftoken = client.cookies['csrf']
+    csrftoken = client.cookies['csrf']
+print(csrftoken)
+
+name="Lencha"
+pw="NnCK34"
+
+login_data = dict(csrfmiddlewaretoken=csrftoken, this_is_the_login_form=1, next='/profile/', username=name, password=pw)
+r = client.post(BASE_URL, data=login_data, headers=dict(Referer=BASE_URL))
+print(r)
