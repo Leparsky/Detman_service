@@ -3,6 +3,7 @@ import detman
 #import threading
 from apscheduler.schedulers.background import BackgroundScheduler
 from detman import detman
+import detman
 
 
 

@@ -8,6 +8,9 @@ from lxml import html  # библиотека для обработки разм
 import re  # осуществляет работу с регулярными выражениями
 from bs4 import BeautifulSoup  # осуществляет синтаксический разбор документов HTML
 
+def get_user(login, password):
+    return 222823
+
 
 BASE_URL = 'http://www.detkityumen.ru'
 client = requests.session()
@@ -34,7 +37,7 @@ class detman:
     user_id = 0
     connected = False
     csrftoken = ""
-    def login(self,name):
+    def login(self,name,password=""):
         #Выполняет логин на сайт
         print("начинаем коннект к сайту")
         self.name=name
@@ -49,8 +52,13 @@ class detman:
             # older versions
             self.csrftoken = client.cookies['csrf']
         print(self.csrftoken)
-        self.get_user_pw(name)
+
         self.get_user_id(name)
+        if not password:
+            self.get_user_pw(name)
+        else:
+            self.pw=password
+
         login_data = dict(csrfmiddlewaretoken=self.csrftoken, this_is_the_login_form=1, next='/profile/', username=self.name,
                           password=self.pw)
         headers['Referer'] = BASE_URL
