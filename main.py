@@ -4,7 +4,8 @@ import detman
 from apscheduler.schedulers.background import BackgroundScheduler
 from detman import detman
 
-sitemanager=detman()
+
+
 
 sched = BackgroundScheduler()
 
@@ -26,7 +27,7 @@ sched.start()
 #print("START : {}".format(datetime.datetime.now()))
 while True : i=1
 
-process()
+#process()
 
 #sitemanager.raise_topics()
 #sitemanager.get_user_id("lencha")
