@@ -1,26 +1,42 @@
-import requests  # осуществляет работу с HTTP-запросами
-import urllib.request  # библиотека HTTP
-from lxml import html  # библиотека для обработки разметки xml и html, импортируем только для работы с html
-import re  # осуществляет работу с регулярными выражениями
-from bs4 import BeautifulSoup  # осуществляет синтаксический разбор документов HTML
-BASE_URL = 'http://www.detkityumen.ru/'
-client = requests.session()
+import detman
+#import datetime
+#import threading
+from apscheduler.schedulers.background import BackgroundScheduler
+from detman import detman
 
-# Retrieve the CSRF token first
-client.get(BASE_URL)  # sets cookie
+sitemanager=detman()
 
-if 'csrftoken' in client.cookies:
-    # Django 1.6 and up
-    csrftoken = client.cookies['csrftoken']
-else:
-    # older versions
-    csrftoken = client.cookies['csrf']
-    csrftoken = client.cookies['csrf']
-print(csrftoken)
+sched = BackgroundScheduler()
 
-name="Lencha"
-pw="NnCK34"
 
-login_data = dict(csrfmiddlewaretoken=csrftoken, this_is_the_login_form=1, next='/profile/', username=name, password=pw)
-r = client.post(BASE_URL, data=login_data, headers=dict(Referer=BASE_URL))
-print(r)
+def process():
+    smgr=detman()
+    smgr.login_db()
+    smgr.login("Lencha")
+    smgr.check_topics_position()
+    #smgr.clear_topiс_bucket("/sp/bucket/82621/orders/")
+    smgr.raise_topics()
+
+sched.add_job(process, 'interval', seconds=20)
+sched.start()
+
+
+
+
+#print("START : {}".format(datetime.datetime.now()))
+while True : i=1
+
+process()
+
+#sitemanager.raise_topics()
+#sitemanager.get_user_id("lencha")
+#sitemanager.login()
+#sitemanager.clear_topiс_bucket("/sp/bucket/82621/orders/")
+#sitemanager.clear_topiс_bucket_arc("/sp/bucket/82621/orders/")
+##select t.id,t.interval_minutes,(strftime('%s','now')-t.last_up_time)/60 d,t.name from topics t where (strftime('%s','now')-t.last_up_time)/60>t.interval_minutes and active=
+#sitemanager.add_order("/sp/igr/82621/photos/")
+#sitemanager.reject_last_order("/sp/bucket/82621/orders/")
+
+
+#sitemanager.get_topics()
+
