@@ -73,6 +73,7 @@ class detman:
     def get_topics(self):
             print("Начинаем поиск тем")
             r = client.get(BASE_URL+r"/sp/?order_by=all&oz="+self.name+"&keyword=&keyword_area=all&pub_date=0&submit=Найти&stop_date=0")  # sets cookie
+            time.sleep(5)
             str = html.fromstring(r.content)
             #преобразование документа к типу lxml.html.HtmlElement
             soup = BeautifulSoup(r.content, "lxml")
@@ -87,7 +88,7 @@ class detman:
             #result = str.xpath("//tr[@class='odd']/td[1]/text()")
     def add_order(self,tref):
         #добавляем заказ в закупку
-        print("Получаем список товаров")
+        print("добавляем заказ в закупку : "+BASE_URL +tref)
         r = client.get(BASE_URL +tref)
         soup = BeautifulSoup(r.content, "lxml")
         for good in soup.find_all("div", "b-sp-photo_item"):
@@ -107,31 +108,48 @@ class detman:
                 main_field_496446 = b.strip().split(":")[1].strip()
                 break
 
-        login_data = dict(csrfmiddlewaretoken = self.csrftoken, main_field_496445 = main_field_496445,
-                          main_field_496446 = main_field_496446, additional_field_496447 = 1,
-                          additional_field_496448 = "", delivery_place = 3, photo_id = photo_id)
+
         headers["Referer"] = BASE_URL + tref
         r = client.get(BASE_URL + form_url, headers=headers)
-        time.sleep(2)
+        time.sleep(5)
+
+        form_data = dict()
+        form_data['csrfmiddlewaretoken'] = self.csrftoken
+        form_data['delivery_place'] = 3
+        form_data['photo_id'] = photo_id
+
+        soup = BeautifulSoup(r.content, "lxml")
+        # подготавливаем форму ля передачи, вытягиваем список полей из кода страницы
+        for field in soup.find_all('input', {'name': re.compile(r'_field_')}):
+            form_data[field.get('name')] = field.get('value')
+
+        for select in soup.find_all('select', {'name': re.compile(r'_field_')}):
+            val=select.find('option',{'value': re.compile('.')}).get('value')
+            #получаем первую опцию в списке выбора значений
+            form_data[select.get('name')] = val
+
+
         headers["Referer"] = BASE_URL + form_url
-        r = client.post(BASE_URL + form_url, data
-        =login_data,headers=headers)
+        r = client.post(BASE_URL + form_url, data=form_data, headers=headers)
         #n = r.text.find(r'<a href="/logout/?next=/">')
 
     def clear_topiс_bucket_arc(self, tref):
         #переносит отмененные заказы в архив
-        print("Получаем список заказов")
+        print("Переносим отмененные заказы в архив : "+BASE_URL + tref)
+        time.sleep(5)
         r = client.get(BASE_URL + tref)
         soup = BeautifulSoup(r.content, "lxml")
         headers["Referer"] = BASE_URL + tref
         for good in soup.find_all("div", "b-contain-delete"):
             a = good.find('a').get('url')
             client.get(BASE_URL + a, headers=headers)
+            time.sleep(5)
             print(a)
 
     def clear_topiс_bucket(self, tref):
-        print("Получаем список заказов")
+        print("очищаем корзину заказов : "+BASE_URL + tref)
         r = client.get(BASE_URL + tref)
+        time.sleep(1)
         soup = BeautifulSoup(r.content, "lxml")
         headers["Referer"] = BASE_URL + tref
         for good in soup.find_all("tr", "b-contain-item"):
@@ -152,8 +170,9 @@ class detman:
 
     def reject_last_order(self, tref):
         #удаляем последний заказ в закупке
-        print("Получаем список заказов")
+        print("удаляем последний заказ в закупке : "+BASE_URL + tref)
         r = client.get(BASE_URL + tref)
+        time.sleep(5)
         soup = BeautifulSoup(r.content, "lxml")
         headers["Referer"] = BASE_URL + tref
         for good in soup.find_all("tr", "b-contain-item"):
@@ -200,7 +219,13 @@ class detman:
         #print("найден пользователь в БД : {}".format(pw))
         self.pw = pw
         return pw
-
+    def set_topic_unactual(self):
+        #добавляет в таблицу тему
+        cursor = self.conn.cursor()
+        b = "update topics set actual=0"
+        r=cursor.execute(b)
+        self.conn.commit()
+        cursor.close()
     def add_topic(self, tid, tref, tname):
         #добавляет в таблицу тему
         cursor = self.conn.cursor()
@@ -209,8 +234,10 @@ class detman:
         d=cursor.fetchone()
         if d[0] == 0:
             b = "insert into topics(id, name, ref, user_id) values({},'{}','{}','{}')".format(tid, tname, tref, self.user_id)
-            cursor.execute(b)
-            self.conn.commit()
+        else:
+            b = "update topics set actual=1 where id={}".format(tid)
+        cursor.execute(b)
+        self.conn.commit()
         cursor.close()
 
     def set_topic_page(self,tid, page):
@@ -237,37 +264,42 @@ class detman:
                 where u.id=t.user_id 
                 and (strftime('%s','now')-t.last_up_time)/60>t.interval_minutes 
                 and t.active=1 
-                
+                and t.page>t.maxpage
+                and t.actual=1
                 order by user_id"""
         #выбираем просроченные задания
         cursor.execute(b)
         for row in cursor.fetchall():
             if row[3].upper() != self.name.upper():
                 self.login(row[3])
+
             self.add_order("/sp/igr/{}/photos/".format(row[0]))
             self.reject_last_order("/sp/bucket/{}/orders/".format(row[0]))
-            #self.clear_topiс_bucket_arc("/sp/bucket/{}/orders/".format(row[0]))
+            time.sleep(20)
+            self.clear_topiс_bucket_arc("/sp/bucket/{}/orders/".format(row[0]))
             b="update topics set last_up_time=strftime('%s','now') where id={}".format(row[0])
             print("{} UP {}".format(datetime.datetime.now(),row[1]))
             cursor2.execute(b)
             self.conn.commit()
+
         cursor.close()
         cursor2.close()
 
     def check_topics_position(self):
         cnn = sqlite3.connect("detservice.db")
         #проверяет место темы в выдаче
-        print("Запущена проверка места темы в выдаче")
-        pages=["http://www.detkityumen.ru/sp/list/1/"]
+        pages = ["http://www.detkityumen.ru/sp/list/1/"]
+        print("Запущена проверка места темы в выдаче : "+pages[0])
         headers["Referer"] = BASE_URL
         r = client.get(pages[0], headers=headers)
+        time.sleep(3)
         soup = BeautifulSoup(r.content, "lxml")
         pager=soup.find('div', 'divPager')
         i=1
         for a in pager.find_all('a'):
             pages.append(BASE_URL+"/sp/list/1/"+a.get('href'))
             i+=1
-            if i>3 : break;
+            if i>4 : break;
             # нам нужны только первые пять страниц
         #список страниц для проверки позиции если закупки там нет то считаем что она на 99 странице
         cur = self.conn.cursor()
@@ -279,6 +311,7 @@ class detman:
         i=1
         for url in pages:
             r = client.get(url,headers=headers)
+            time.sleep(5)
             #print("#Получаем список заказов {}".format(url))
             soup = BeautifulSoup(r.content, "lxml")
             for topic in soup.find_all('div', 'b-actions__item_style_info_link'):
@@ -289,10 +322,3 @@ class detman:
                     #print("#стр {} тема {}".format(tid,i))
                     self.set_topic_page(tid, i)
             i += 1
-
-
-
-
-
-
-

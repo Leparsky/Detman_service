@@ -3,32 +3,32 @@ import detman
 #import threading
 from apscheduler.schedulers.background import BackgroundScheduler
 from detman import detman
-import detman
+#import detman
 
 
 
 
-sched = BackgroundScheduler()
+#sched = BackgroundScheduler()
 
 
 def process():
     smgr=detman()
     smgr.login_db()
     smgr.login("Lencha")
+    smgr.set_topic_unactual()
+    smgr.get_topics()
     smgr.check_topics_position()
     #smgr.clear_topiс_bucket("/sp/bucket/82621/orders/")
     smgr.raise_topics()
 
-sched.add_job(process, 'interval', seconds=20)
-sched.start()
+#sched.add_job(process, 'interval', seconds=20)
 
 
-
-
+#sched.start()
 #print("START : {}".format(datetime.datetime.now()))
-while True : i=1
+#while True : i=1
 
-#process()
+process()
 
 #sitemanager.raise_topics()
 #sitemanager.get_user_id("lencha")

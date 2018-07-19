@@ -1,10 +1,19 @@
-from flask import Flask, render_template, request, redirect, url_for
+from flask import Flask, render_template, request, redirect, url_for, flash
+from flask_table import Table as ftTable, Col, LinkCol
+from apscheduler.schedulers.background import BackgroundScheduler
 
 #from flask_login import LoginManager, UserMixin, login_required, login_user, logout_user
-from forms import LoginForm
+from forms import LoginForm, EditForm
 from detman import detman
+from sqlalchemy import create_engine, MetaData
+from sqlalchemy import Table
 
 
+engine = create_engine('sqlite:///detservice.db', convert_unicode=True)
+metadata = MetaData(bind=engine)
+
+users = Table('users', metadata, autoload=True)
+topics = Table('users', metadata, autoload=True)
 
 app = Flask(__name__)
 #login_manager = LoginManager()
@@ -14,18 +23,99 @@ app.config.update(dict(
     WTF_CSRF_SECRET_KEY="a csrf secret key"
 ))
 
-@app.route("/")
-def main():
-    return render_template('index.html')
+def sensor():
+    smgr=detman()
+    smgr.login_db()
+    smgr.login("Lencha")
+    smgr.set_topic_unactual()
+    smgr.get_topics()
+    smgr.check_topics_position()
+    #smgr.clear_topiс_bucket("/sp/bucket/82621/orders/")
+    smgr.raise_topics()
 
-@app.route('/showSignUp')
-def showSignUp():
-    return render_template('signup.html')
+
+sched = BackgroundScheduler(daemon=True)
+sched.add_job(sensor,'interval',minutes=5)
+sched.start()
+
+class usr:
+    # осуществляет работу с HTTP-запросами сайта http://www.detkityumen.ru/
+    name=""
+user = None
 
 
-@app.route('/')
-@app.route('/index')
+class Results(ftTable):
+    id = Col('Id')
+    name = Col('Название закупки')
+    page = Col('текушая странца')
+    maxpage = Col('Max странца')
+    interval_minutes = Col('Время проверки в минутах')
+    active = Col('Активно')
+    up_time = Col('Время последнего поднятия')
+    edit = LinkCol('Изменить параметры', 'edit', url_kwargs=dict(id='id'))
+
+
+@app.route('/item/<int:id>', methods=['GET', 'POST'])
+def edit(id):
+    tpcs = engine.execute("""select t.id,
+                                           t.name,
+                                           t.page,
+                                           t.maxpage max_page,
+                                           t.interval_minutes,
+                                           t.active, 
+                                           datetime(last_up_time, 'unixepoch', 'localtime') up_time 
+                                   from topics t 
+                                   where actual=1 """+" and id={}".format(id)).first()
+    form=EditForm(formdata=request.form, obj=tpcs)
+    if request.method == 'POST': # and form.validate():
+        #id1 = request.form["id"]
+        name = request.form["name"]
+        page = request.form["page"]
+        max_page = request.form["max_page"]
+        interval_minutes = request.form["interval_minutes"]
+        active = request.form["active"]
+        up_time = request.form["up_time"]
+
+        conn = engine.connect()
+        trans = conn.begin()
+        conn.execute("update topics set maxpage = :maxpage,interval_minutes = :interval_minutes, active=:active where id=:id",  maxpage=max_page, interval_minutes = interval_minutes, active=active, id=id)
+        trans.commit()
+        conn.close()
+        # save edits
+        #save_changes(album, form)
+        flash('Параметры сервиса поднятия  закупки "{}" изменены успешно'.format(id))
+        return redirect('/')
+    return render_template('edit_topic.html', form=form)
+
+@app.route('/', methods=["GET"])
+@app.route('/index', methods=["GET"])
 def index():
+    if user is None : return redirect('/login')
+    tpcs = engine.execute("""select t.id,
+                                       t.name,
+                                       t.page,
+                                       t.maxpage,
+                                       t.interval_minutes,
+                                       t.active, 
+                                       datetime(last_up_time, 'unixepoch', 'localtime') up_time 
+                               from topics t 
+                               where actual=1 order by active desc, name""")
+    table = Results(tpcs)
+    table.border = True
+    return render_template('index2.html', table=table)
+
+
+@app.route('/2a', methods=["GET"])
+def index2():
+    tpcs=engine.execute("""select t.id,
+                                   t.name,
+                                   t.page,
+                                   t.maxpage,
+                                   t.interval_minutes,
+                                   t.active, 
+                                   datetime(last_up_time, 'unixepoch', 'localtime') up_time 
+                           from topics t 
+                           where actual=1""")
     user = {'username': 'Miguel'}
     posts = [
         {
@@ -37,7 +127,7 @@ def index():
             'body': 'The Avengers movie was so cool!'
         }
     ]
-    return render_template('index.html', title='Home', user=user, posts=posts)
+    return render_template('index.html', title='Home', tpcs=tpcs, user=user)
 
 
 
@@ -47,7 +137,7 @@ def login():
     if request.method == "POST":
         login = request.form["username"]
         password = request.form["password"]
-        remember_me = request.form["remember_me"]
+        #remember_me = request.form["remember_me"]
         # ищем пользователя по логину и паролю
         # get_user - внутренняя функция, для запроса к БД, например
         detmgr = detman()
@@ -55,6 +145,7 @@ def login():
         detmgr.login(login,password)
 
         if detmgr.connected:
+            global user
             user = usr()
             user.name = detmgr.name
             return redirect(url_for("index"))
