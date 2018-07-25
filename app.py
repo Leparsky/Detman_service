@@ -98,8 +98,9 @@ def index():
                                        t.interval_minutes,
                                        t.active, 
                                        datetime(last_up_time, 'unixepoch', 'localtime') up_time 
-                               from topics t 
-                               where actual=1 order by active desc, name""")
+                               from topics t , users u
+                               where t.actual=1 and t.user_id=u.id
+                               and upper(u.name)='{}' order by t.active desc, t.name""".format(user.name.upper()))
     table = Results(tpcs)
     table.border = True
     return render_template('index2.html', table=table)
