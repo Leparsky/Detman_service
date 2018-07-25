@@ -39,7 +39,7 @@ class detman:
     csrftoken = ""
     def login(self,name,password=""):
         #Выполняет логин на сайт
-        print("начинаем коннект к сайту")
+        print("начинаем коннект к сайту {}".format(name))
         self.name=name
         #self.conn1 = sqlite3.connect("detservice.db")  # или :memory: чтобы сохранить в RAM
         # Retrieve the CSRF token first
@@ -73,7 +73,7 @@ class detman:
     def get_topics(self):
             print("Начинаем поиск тем")
             r = client.get(BASE_URL+r"/sp/?order_by=all&oz="+self.name+"&keyword=&keyword_area=all&pub_date=0&submit=Найти&stop_date=0")  # sets cookie
-            time.sleep(5)
+            time.sleep(3)
             str = html.fromstring(r.content)
             #преобразование документа к типу lxml.html.HtmlElement
             soup = BeautifulSoup(r.content, "lxml")
@@ -111,7 +111,7 @@ class detman:
 
         headers["Referer"] = BASE_URL + tref
         r = client.get(BASE_URL + form_url, headers=headers)
-        time.sleep(5)
+        time.sleep(3)
 
         form_data = dict()
         form_data['csrfmiddlewaretoken'] = self.csrftoken
@@ -136,14 +136,14 @@ class detman:
     def clear_topiс_bucket_arc(self, tref):
         #переносит отмененные заказы в архив
         print("Переносим отмененные заказы в архив : "+BASE_URL + tref)
-        time.sleep(5)
+        time.sleep(3)
         r = client.get(BASE_URL + tref)
         soup = BeautifulSoup(r.content, "lxml")
         headers["Referer"] = BASE_URL + tref
         for good in soup.find_all("div", "b-contain-delete"):
             a = good.find('a').get('url')
             client.get(BASE_URL + a, headers=headers)
-            time.sleep(5)
+            time.sleep(3)
             print(a)
 
     def clear_topiс_bucket(self, tref):
@@ -172,7 +172,7 @@ class detman:
         #удаляем последний заказ в закупке
         print("удаляем последний заказ в закупке : "+BASE_URL + tref)
         r = client.get(BASE_URL + tref)
-        time.sleep(5)
+        time.sleep(3)
         soup = BeautifulSoup(r.content, "lxml")
         headers["Referer"] = BASE_URL + tref
         for good in soup.find_all("tr", "b-contain-item"):
@@ -222,7 +222,7 @@ class detman:
     def set_topic_unactual(self):
         #добавляет в таблицу тему
         cursor = self.conn.cursor()
-        b = "update topics set actual=0"
+        b = "update topics set actual=0 where user_id={}".format(self.user_id)
         r=cursor.execute(b)
         self.conn.commit()
         cursor.close()
@@ -250,11 +250,21 @@ class detman:
         cursor.close()
 
     def raise_topics(self):
+        cursor = self.conn.cursor()
+        cursor2 = self.conn.cursor()
+        b = "select u.name from users u"
+        cursor.execute(b)
+        for row in cursor.fetchall():
+            self.login(row[0])
+            self.set_topic_unactual()
+            self.get_topics()
+        self.check_topics_position()
+
+
         #conn1 = sqlite3.connect("detservice.db")  # или :memory: чтобы сохранить в RAM
         #проверяет необходимость поднятия тем и поднимает
         print("{} Запущено поднятие тем".format(datetime.datetime.now()))
-        cursor = self.conn.cursor()
-        cursor2 = self.conn.cursor()
+
         #select t.id,t.name from topics t where (strftime('%s','now')-t.last_up_time)/60>t.interval_minutes
         #select datetime(t.last_up_time, 'unixepoch', 'localtime') from topics t
         #select t.id,t.name, (strftime('%s','now')-t.last_up_time)/60 d  from topics t where t.active=1
@@ -311,7 +321,7 @@ class detman:
         i=1
         for url in pages:
             r = client.get(url,headers=headers)
-            time.sleep(5)
+            time.sleep(3)
             #print("#Получаем список заказов {}".format(url))
             soup = BeautifulSoup(r.content, "lxml")
             for topic in soup.find_all('div', 'b-actions__item_style_info_link'):

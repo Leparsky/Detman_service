@@ -26,10 +26,10 @@ app.config.update(dict(
 def sensor():
     smgr=detman()
     smgr.login_db()
-    smgr.login("Lencha")
-    smgr.set_topic_unactual()
-    smgr.get_topics()
-    smgr.check_topics_position()
+    #smgr.login("Lencha")
+    #smgr.set_topic_unactual()
+    #smgr.get_topics()
+    #smgr.check_topics_position()
     #smgr.clear_topiс_bucket("/sp/bucket/82621/orders/")
     smgr.raise_topics()
 
