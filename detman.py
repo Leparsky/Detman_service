@@ -54,11 +54,10 @@ class detman:
         print(self.csrftoken)
 
         self.get_user_id(name)
-        if not password:
-            self.get_user_pw(name)
-        else:
-            self.pw=password
-
+        self.pw = self.get_user_pw(name)
+        if password and  self.pw != password:
+                self.connected = False
+                return
         login_data = dict(csrfmiddlewaretoken=self.csrftoken, this_is_the_login_form=1, next='/profile/', username=self.name,
                           password=self.pw)
         headers['Referer'] = BASE_URL
@@ -93,6 +92,8 @@ class detman:
         soup = BeautifulSoup(r.content, "lxml")
         for good in soup.find_all("div", "b-sp-photo_item"):
             a = good.find('a', "popup-photo")
+            if a == None:
+                continue
             form_url = a.get('form-url')
             print(form_url)
             tref = a.get('href')
@@ -106,6 +107,7 @@ class detman:
                 main_field_496445 = b.strip()
                 b = good.find_all('div', "b-sp-photo_descr__title")[1].contents[0]
                 main_field_496446 = b.strip().split(":")[1].strip()
+                self.set_topic_good_id(card_id, photo_id)
                 break
 
 
@@ -149,7 +151,7 @@ class detman:
     def clear_topiс_bucket(self, tref):
         print("очищаем корзину заказов : "+BASE_URL + tref)
         r = client.get(BASE_URL + tref)
-        time.sleep(1)
+        time.sleep(3)
         soup = BeautifulSoup(r.content, "lxml")
         headers["Referer"] = BASE_URL + tref
         for good in soup.find_all("tr", "b-contain-item"):
@@ -162,12 +164,43 @@ class detman:
 
                 headers["Referer"] = BASE_URL + tref
                 r = client.get(BASE_URL + ref, headers=headers)
-                time.sleep(1)
+                time.sleep(2)
                 form_data = dict(csrfmiddlewaretoken=self.csrftoken, state_comment="")
                 r = client.post(BASE_URL + ref, data=form_data, headers=headers)
                 form_data = dict(csrfmiddlewaretoken=self.csrftoken, state_comment="Ах какая жалость!!! :(")
                 r = client.post(BASE_URL + ref, data=form_data, headers=headers)
+    def clear_topiс_bucket_by_good(self, tref):
+        id=tref.split("/")[3].strip()
+        cursor = self.conn.cursor()
+        b = "select good_id from topics where id='{}'".format(id)
+        cursor.execute(b)
+        good_id = cursor.fetchone()[0]
+        #получаем ID товара из базы
 
+        print("очищаем корзину заказов : "+BASE_URL + tref)
+        r = client.get(BASE_URL + tref)
+        time.sleep(2)
+        soup = BeautifulSoup(r.content, "lxml")
+        headers["Referer"] = BASE_URL + tref
+
+        for good in soup.find_all("tr", "b-contain-item"):
+            delete = False
+            for reff in good.find_all('a'):
+                if reff.get('href').find(str(good_id)) > 0: delete = True
+            if not delete: continue
+            div=good.find_all('div','main-info')
+            a=div[1].find('a','popup-html')
+            if not a==None:
+                ref=a.get('href')
+                print(ref)
+
+                headers["Referer"] = BASE_URL + tref
+                r = client.get(BASE_URL + ref, headers=headers)
+                time.sleep(2)
+                form_data = dict(csrfmiddlewaretoken=self.csrftoken, state_comment="")
+                r = client.post(BASE_URL + ref, data=form_data, headers=headers)
+                form_data = dict(csrfmiddlewaretoken=self.csrftoken, state_comment="Ах какая жалость!!! :(")
+                r = client.post(BASE_URL + ref, data=form_data, headers=headers)
     def reject_last_order(self, tref):
         #удаляем последний заказ в закупке
         print("удаляем последний заказ в закупке : "+BASE_URL + tref)
@@ -185,7 +218,7 @@ class detman:
 
                 headers["Referer"] = BASE_URL + tref
                 r = client.get(BASE_URL + ref, headers=headers)
-                time.sleep(1)
+                time.sleep(2)
                 form_data = dict(csrfmiddlewaretoken=self.csrftoken, state_comment="")
                 r = client.post(BASE_URL + ref, data=form_data, headers=headers)
                 form_data = dict(csrfmiddlewaretoken=self.csrftoken, state_comment="Ах какая жалость!!! :(")
@@ -226,6 +259,14 @@ class detman:
         r=cursor.execute(b)
         self.conn.commit()
         cursor.close()
+    def set_topic_good_id(self,topic_id,good_id):
+        #добавляет в таблицу тему
+        cursor = self.conn.cursor()
+        b = "update topics set good_id={} where id={}".format(good_id , topic_id)
+        r=cursor.execute(b)
+        self.conn.commit()
+        cursor.close()
+
     def add_topic(self, tid, tref, tname):
         #добавляет в таблицу тему
         cursor = self.conn.cursor()
@@ -254,6 +295,7 @@ class detman:
         cursor2 = self.conn.cursor()
         b = "select u.name from users u"
         cursor.execute(b)
+        # ТЕСТ
         for row in cursor.fetchall():
             self.login(row[0])
             self.set_topic_unactual()
@@ -277,15 +319,24 @@ class detman:
                 and t.page>t.maxpage
                 and t.actual=1
                 order by user_id"""
+        # ТЕСТ
+        """b =  select t.id,t.name,t.user_id, u.name 
+                from topics t, users u  
+                where u.id=t.user_id 
+                
+                and t.id = 81532 
+                
+                order by user_id"""
         #выбираем просроченные задания
         cursor.execute(b)
         for row in cursor.fetchall():
             if row[3].upper() != self.name.upper():
                 self.login(row[3])
-
+            #ТЕСТ
             self.add_order("/sp/igr/{}/photos/".format(row[0]))
-            self.reject_last_order("/sp/bucket/{}/orders/".format(row[0]))
-            time.sleep(20)
+            #self.reject_last_order("/sp/bucket/{}/orders/".format(row[0]))
+            self.clear_topiс_bucket_by_good("/sp/bucket/{}/orders/".format(row[0]))
+            time.sleep(3)
             self.clear_topiс_bucket_arc("/sp/bucket/{}/orders/".format(row[0]))
             b="update topics set last_up_time=strftime('%s','now') where id={}".format(row[0])
             print("{} UP {}".format(datetime.datetime.now(),row[1]))
