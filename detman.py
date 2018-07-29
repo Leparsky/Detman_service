@@ -65,6 +65,10 @@ class detman:
         n = r.text.find(r'<a href="/logout/?next=/">')
         if n != -1:
             self.connected = True
+        else
+            self.name="Not connected"
+            self.user_id = 0
+            self.connected = False
         print(self.connected)
     def login_db(self):
         self.conn = sqlite3.connect("detservice.db")  # или :memory: чтобы сохранить в RAM
@@ -332,6 +336,11 @@ class detman:
         for row in cursor.fetchall():
             if row[3].upper() != self.name.upper():
                 self.login(row[3])
+            while row[3].upper() != self.name.upper():
+                #важно чтобы залогинилась иначе пусть зациклится
+                time.sleep(60)
+                self.login(row[3])
+
             #ТЕСТ
             self.add_order("/sp/igr/{}/photos/".format(row[0]))
             #self.reject_last_order("/sp/bucket/{}/orders/".format(row[0]))
