@@ -65,7 +65,7 @@ class detman:
         n = r.text.find(r'<a href="/logout/?next=/">')
         if n != -1:
             self.connected = True
-        else
+        else:
             self.name="Not connected"
             self.user_id = 0
             self.connected = False
