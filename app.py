@@ -103,7 +103,7 @@ def index():
                                and upper(u.name)='{}' order by t.active desc, t.name""".format(user.name.upper()))
     table = Results(tpcs)
     table.border = True
-    return render_template('index2.html', table=table)
+    return render_template('index2.html', table=table, username=user.name)
 
 
 @app.route('/2a', methods=["GET"])
