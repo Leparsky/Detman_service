@@ -40,10 +40,10 @@ class detman:
     def login(self,name,password=""):
         #Выполняет логин на сайт
         print("начинаем коннект к сайту {}".format(name))
-        self.name=name
+
         #self.conn1 = sqlite3.connect("detservice.db")  # или :memory: чтобы сохранить в RAM
         # Retrieve the CSRF token first
-        client.get(BASE_URL)  # sets cookie
+        client.get(BASE_URL+"/logout")  # sets cookie
 
         if 'csrftoken' in client.cookies:
             # Django 1.6 and up
@@ -58,23 +58,24 @@ class detman:
         if password and  self.pw != password:
                 self.connected = False
                 return
-        login_data = dict(csrfmiddlewaretoken=self.csrftoken, this_is_the_login_form=1, next='/profile/', username=self.name,
+        login_data = dict(csrfmiddlewaretoken=self.csrftoken, this_is_the_login_form=1, next='/profile/', username=name,
                           password=self.pw)
         headers['Referer'] = BASE_URL
         r = client.post(BASE_URL + "/login/", data=login_data, headers=headers)
         n = r.text.find(r'<a href="/logout/?next=/">')
         if n != -1:
             self.connected = True
+            self.name=name
         else:
             self.name="Not connected"
             self.user_id = 0
             self.connected = False
-        print(self.connected)
+            print("{} подключено {}".format(self.name,self.connected))
     def login_db(self):
         self.conn = sqlite3.connect("detservice.db")  # или :memory: чтобы сохранить в RAM
 #Получить список тем
     def get_topics(self):
-            print("Начинаем поиск тем")
+            print("{} Начинаем поиск тем".format(self.name))
             r = client.get(BASE_URL+r"/sp/?order_by=all&oz="+self.name+"&keyword=&keyword_area=all&pub_date=0&submit=Найти&stop_date=0")  # sets cookie
             time.sleep(3)
             str = html.fromstring(r.content)
@@ -86,12 +87,11 @@ class detman:
                 tid = tref.split("/")[3]
                 self.add_topic(tid, tref, tname)
                 #tref.split("/")[]
-                print("№ {} Тема :{} ссылка: {}".format(tid,tname,tref))
-
+                print("{} № {} Тема :{} ссылка: {}".format(self.name,tid,tname,tref))
             #result = str.xpath("//tr[@class='odd']/td[1]/text()")
     def add_order(self,tref):
         #добавляем заказ в закупку
-        print("добавляем заказ в закупку : "+BASE_URL +tref)
+        print("{} добавляем заказ в закупку : {}".format(self.name, BASE_URL + tref))
         r = client.get(BASE_URL +tref)
         soup = BeautifulSoup(r.content, "lxml")
         for good in soup.find_all("div", "b-sp-photo_item"):
@@ -114,34 +114,38 @@ class detman:
                 self.set_topic_good_id(card_id, photo_id)
                 break
 
+        if photo_id:
+            headers["Referer"] = BASE_URL + tref
+            r = client.get(BASE_URL + form_url, headers=headers)
+            time.sleep(3)
 
-        headers["Referer"] = BASE_URL + tref
-        r = client.get(BASE_URL + form_url, headers=headers)
-        time.sleep(3)
-
-        form_data = dict()
-        form_data['csrfmiddlewaretoken'] = self.csrftoken
-        form_data['delivery_place'] = 3
-        form_data['photo_id'] = photo_id
-
-        soup = BeautifulSoup(r.content, "lxml")
-        # подготавливаем форму ля передачи, вытягиваем список полей из кода страницы
-        for field in soup.find_all('input', {'name': re.compile(r'_field_')}):
-            form_data[field.get('name')] = field.get('value')
-
-        for select in soup.find_all('select', {'name': re.compile(r'_field_')}):
-            val=select.find('option',{'value': re.compile('.')}).get('value')
-            #получаем первую опцию в списке выбора значений
-            form_data[select.get('name')] = val
+            form_data = dict()
+            form_data['csrfmiddlewaretoken'] = self.csrftoken
 
 
-        headers["Referer"] = BASE_URL + form_url
-        r = client.post(BASE_URL + form_url, data=form_data, headers=headers)
-        #n = r.text.find(r'<a href="/logout/?next=/">')
+            soup = BeautifulSoup(r.content, "lxml")
+            # подготавливаем форму ля передачи, вытягиваем список полей из кода страницы
+            for field in soup.find_all('input', {'name': re.compile(r'_field_')}):
+                form_data[field.get('name')] = field.get('value')
+            for field in soup.find_all('textarea', {'name': re.compile(r'_field_')}):
+                form_data[field.get('name')] = ""
+
+            for select in soup.find_all('select', {'name': re.compile(r'_field_')}):
+                val=select.find('option',{'value': re.compile('.')}).get('value')
+                #получаем первую опцию в списке выбора значений
+                form_data[select.get('name')] = val
+
+            form_data['delivery_place'] = 3
+            form_data['photo_id'] = photo_id
+
+            headers["Referer"] = BASE_URL + form_url
+            r = client.post(BASE_URL + form_url, data=form_data, headers=headers)
+        else:
+            print("{} нет photoId".format(self.name))
 
     def clear_topiс_bucket_arc(self, tref):
         #переносит отмененные заказы в архив
-        print("Переносим отмененные заказы в архив : "+BASE_URL + tref)
+        print("{} Переносим отмененные заказы в архив : {}".format(self.name, BASE_URL + tref))
         time.sleep(3)
         r = client.get(BASE_URL + tref)
         soup = BeautifulSoup(r.content, "lxml")
@@ -153,7 +157,7 @@ class detman:
             print(a)
 
     def clear_topiс_bucket(self, tref):
-        print("очищаем корзину заказов : "+BASE_URL + tref)
+        print("{} очищаем корзину заказов : {}".format(self.name, BASE_URL + tref))
         r = client.get(BASE_URL + tref)
         time.sleep(3)
         soup = BeautifulSoup(r.content, "lxml")
@@ -180,8 +184,7 @@ class detman:
         cursor.execute(b)
         good_id = cursor.fetchone()[0]
         #получаем ID товара из базы
-
-        print("очищаем корзину заказов : "+BASE_URL + tref)
+        print("{} очищаем корзину заказов : {}".format(self.name, BASE_URL + tref))
         r = client.get(BASE_URL + tref)
         time.sleep(2)
         soup = BeautifulSoup(r.content, "lxml")
@@ -205,9 +208,36 @@ class detman:
                 r = client.post(BASE_URL + ref, data=form_data, headers=headers)
                 form_data = dict(csrfmiddlewaretoken=self.csrftoken, state_comment="Ах какая жалость!!! :(")
                 r = client.post(BASE_URL + ref, data=form_data, headers=headers)
+
+    def clear_org_rejected_orders(self, tref):
+        #удаляет заказы со статусом отказ пользователя
+        print("{} очищаем отказы пользователей у орга : {}".format(self.name, BASE_URL + tref))
+        r = client.get(BASE_URL + tref)
+        time.sleep(1)
+        soup = BeautifulSoup(r.content, "lxml")
+        headers["Referer"] = BASE_URL + tref
+
+        headers["Referer"] = BASE_URL + tref
+        form_data = dict()
+        form_data['csrfmiddlewaretoken'] = self.csrftoken
+        form_data['action'] = "delete"
+        form_data['sp_card'] = ""
+        form_data['comment'] = ""
+
+        for order in soup.find_all("tr", "b-contain-item"):
+            delete = False
+            if "Отказ пользователя" in order.text:
+                order_id=order.find("div",class_="commentSelf").get('order-id')
+                form_data['orders'] = order_id
+                r = client.post(BASE_URL + "/sp/order_list/{}/change_state/".format(tref.split("/")[3].strip()), data=form_data, headers=headers)
+                time.sleep(1)
+#"/sp/order_list/{}/?cancelled=1"
+        r = client.get(BASE_URL + "/sp/order_list/{}/?cancelled=0".format(tref.split("/")[3].strip()))
+
+
     def reject_last_order(self, tref):
         #удаляем последний заказ в закупке
-        print("удаляем последний заказ в закупке : "+BASE_URL + tref)
+        print("{} удаляем последний заказ в закупке : {}".format(self.name, BASE_URL + tref))
         r = client.get(BASE_URL + tref)
         time.sleep(3)
         soup = BeautifulSoup(r.content, "lxml")
@@ -294,67 +324,6 @@ class detman:
         self.conn.commit()
         cursor.close()
 
-    def raise_topics(self):
-        cursor = self.conn.cursor()
-        cursor2 = self.conn.cursor()
-        b = "select u.name from users u"
-        cursor.execute(b)
-        # ТЕСТ
-        for row in cursor.fetchall():
-            self.login(row[0])
-            self.set_topic_unactual()
-            self.get_topics()
-        self.check_topics_position()
-
-
-        #conn1 = sqlite3.connect("detservice.db")  # или :memory: чтобы сохранить в RAM
-        #проверяет необходимость поднятия тем и поднимает
-        print("{} Запущено поднятие тем".format(datetime.datetime.now()))
-
-        #select t.id,t.name from topics t where (strftime('%s','now')-t.last_up_time)/60>t.interval_minutes
-        #select datetime(t.last_up_time, 'unixepoch', 'localtime') from topics t
-        #select t.id,t.name, (strftime('%s','now')-t.last_up_time)/60 d  from topics t where t.active=1
-        #select t.id,t.name,t.user_id from topics t where (strftime('%s','now')-t.last_up_time)/60>t.interval_minutes and t.active=1 and t.page>t.maxpage order by user_id
-        b = """ select t.id,t.name,t.user_id, u.name 
-                from topics t, users u  
-                where u.id=t.user_id 
-                and (strftime('%s','now')-t.last_up_time)/60>t.interval_minutes 
-                and t.active=1 
-                and t.page>t.maxpage
-                and t.actual=1
-                order by user_id"""
-        # ТЕСТ
-        """b =  select t.id,t.name,t.user_id, u.name 
-                from topics t, users u  
-                where u.id=t.user_id 
-                
-                and t.id = 81532 
-                
-                order by user_id"""
-        #выбираем просроченные задания
-        cursor.execute(b)
-        for row in cursor.fetchall():
-            if row[3].upper() != self.name.upper():
-                self.login(row[3])
-            while row[3].upper() != self.name.upper():
-                #важно чтобы залогинилась иначе пусть зациклится
-                time.sleep(60)
-                self.login(row[3])
-
-            #ТЕСТ
-            self.add_order("/sp/igr/{}/photos/".format(row[0]))
-            #self.reject_last_order("/sp/bucket/{}/orders/".format(row[0]))
-            self.clear_topiс_bucket_by_good("/sp/bucket/{}/orders/".format(row[0]))
-            time.sleep(3)
-            self.clear_topiс_bucket_arc("/sp/bucket/{}/orders/".format(row[0]))
-            b="update topics set last_up_time=strftime('%s','now') where id={}".format(row[0])
-            print("{} UP {}".format(datetime.datetime.now(),row[1]))
-            cursor2.execute(b)
-            self.conn.commit()
-
-        cursor.close()
-        cursor2.close()
-
     def check_topics_position(self):
         cnn = sqlite3.connect("detservice.db")
         #проверяет место темы в выдаче
@@ -392,3 +361,68 @@ class detman:
                     #print("#стр {} тема {}".format(tid,i))
                     self.set_topic_page(tid, i)
             i += 1
+
+
+    def raise_topics(self):
+        cursor = self.conn.cursor()
+        cursor2 = self.conn.cursor()
+        b = "select u.name from users u"
+        cursor.execute(b)
+        # ТЕСТ
+        for row in cursor.fetchall():
+            self.login(row[0])
+            self.set_topic_unactual()
+            self.get_topics()
+        self.check_topics_position()
+
+        # conn1 = sqlite3.connect("detservice.db")  # или :memory: чтобы сохранить в RAM
+        # проверяет необходимость поднятия тем и поднимает
+        print("{} Запущено поднятие тем : {}".format(self.name, datetime.datetime.now()))
+        # select t.id,t.name from topics t where (strftime('%s','now')-t.last_up_time)/60>t.interval_minutes
+        # select datetime(t.last_up_time, 'unixepoch', 'localtime') from topics t
+        # select t.id,t.name, (strftime('%s','now')-t.last_up_time)/60 d  from topics t where t.active=1
+        # select t.id,t.name,t.user_id from topics t where (strftime('%s','now')-t.last_up_time)/60>t.interval_minutes and t.active=1 and t.page>t.maxpage order by user_id
+        b = """ select t.id,t.name,t.user_id, u.name 
+                from topics t, users u  
+                where u.id=t.user_id 
+                and (strftime('%s','now')-t.last_up_time)/60>t.interval_minutes 
+                and t.active=1 
+                and t.page>t.maxpage
+                and t.actual=1
+                
+                order by user_id"""
+        # ТЕСТ
+        """b =  select t.id,t.name,t.user_id, u.name
+                from topics t, users u  
+                where u.id=t.user_id 
+                and (strftime('%s','now')-t.last_up_time)/60>t.interval_minutes 
+                and t.active=1 
+                and t.page>t.maxpage
+                and t.actual=1
+                and t.user_id<>222823
+                order by user_id"""
+        # выбираем просроченные задания
+        cursor.execute(b)
+        for row in cursor.fetchall():
+            if row[3].upper() != self.name.upper():
+                self.login(row[3])
+            while row[3].upper() != self.name.upper():
+                # важно чтобы залогинилась иначе пусть зациклится
+                time.sleep(60)
+                self.login(row[3])
+
+            # ТЕСТ
+            #self.clear_org_rejected_orders("/sp/order_list/{}/".format("86873"))
+            #TEST self.clear_org_rejected_orders("/sp/order_list/{}/?cancelled=1".format(row[0]))
+            self.add_order("/sp/igr/{}/photos/".format(row[0]))
+            # self.reject_last_order("/sp/bucket/{}/orders/".format(row[0]))
+            self.clear_topiс_bucket_by_good("/sp/bucket/{}/orders/".format(row[0]))
+            time.sleep(3)
+            self.clear_topiс_bucket_arc("/sp/bucket/{}/orders/".format(row[0]))
+            b = "update topics set last_up_time=strftime('%s','now') where id={}".format(row[0])
+            print("{} UP {}".format(datetime.datetime.now(), row[1]))
+            cursor2.execute(b)
+            self.conn.commit()
+
+        cursor.close()
+        cursor2.close()
