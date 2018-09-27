@@ -153,4 +153,5 @@ def login():
     return render_template("login.html", title='Login', form=form)
 
 if __name__ == "__main__":
+    #app.run(host='10.0.0.2')
     app.run()

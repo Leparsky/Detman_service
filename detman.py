@@ -99,22 +99,14 @@ class detman:
             if a == None:
                 continue
             form_url = a.get('form-url')
-            print(form_url)
+            #print(form_url)
             tref = a.get('href')
-            print(tref)
+            #print(tref)
 
-            if tref!=None and len(tref.split("/")) > 4:
-                #сли ссылка на страницу с товаром а не на скрипт
-                card_id=tref.split("/")[3]
-                photo_id=tref.split("/")[5]
-                b = good.find('div', "b-sp-photo_descr__title2 b-sp-photo_descr__title").find("b").contents[0]
-                main_field_496445 = b.strip()
-                b = good.find_all('div', "b-sp-photo_descr__title")[1].contents[0]
-                main_field_496446 = b.strip().split(":")[1].strip()
-                self.set_topic_good_id(card_id, photo_id)
-                break
-
-        if photo_id:
+        if tref != None and len(tref.split("/")) > 4:
+            card_id = tref.split("/")[3]
+            photo_id = tref.split("/")[5]
+            self.set_topic_good_id(card_id, photo_id)
             headers["Referer"] = BASE_URL + tref
             r = client.get(BASE_URL + form_url, headers=headers)
             time.sleep(3)
@@ -141,7 +133,7 @@ class detman:
             headers["Referer"] = BASE_URL + form_url
             r = client.post(BASE_URL + form_url, data=form_data, headers=headers)
         else:
-            print("{} нет photoId".format(self.name))
+            print("{} ошибка asddorder {}".format(self.name,tref))
 
     def clear_topiс_bucket_arc(self, tref):
         #переносит отмененные заказы в архив
