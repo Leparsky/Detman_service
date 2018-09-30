@@ -405,14 +405,14 @@ class detman:
 
             # ТЕСТ
             #self.clear_org_rejected_orders("/sp/order_list/{}/".format("86873"))
-            #TEST self.clear_org_rejected_orders("/sp/order_list/{}/?cancelled=1".format(row[0]))
-            self.add_order("/sp/igr/{}/photos/".format(row[0]))
-            # self.reject_last_order("/sp/bucket/{}/orders/".format(row[0]))
+            self.clear_org_rejected_orders("/sp/order_list/{}/?cancelled=1".format(row[0]))
+            #self.add_order("/sp/igr/{}/photos/".format(row[0]))
+            self.reject_last_order("/sp/bucket/{}/orders/".format(row[0]))
             self.clear_topiс_bucket_by_good("/sp/bucket/{}/orders/".format(row[0]))
             time.sleep(3)
             self.clear_topiс_bucket_arc("/sp/bucket/{}/orders/".format(row[0]))
             b = "update topics set last_up_time=strftime('%s','now') where id={}".format(row[0])
-            print("{} UP {}".format(datetime.datetime.now(), row[1]))
+            #print("{} UP {}".format(datetime.datetime.now(), row[1]))
             cursor2.execute(b)
             self.conn.commit()
 
