@@ -406,7 +406,7 @@ class detman:
             # ТЕСТ
             #self.clear_org_rejected_orders("/sp/order_list/{}/".format("86873"))
             self.clear_org_rejected_orders("/sp/order_list/{}/?cancelled=1".format(row[0]))
-            #self.add_order("/sp/igr/{}/photos/".format(row[0]))
+            self.add_order("/sp/igr/{}/photos/".format(row[0]))
             self.reject_last_order("/sp/bucket/{}/orders/".format(row[0]))
             self.clear_topiс_bucket_by_good("/sp/bucket/{}/orders/".format(row[0]))
             time.sleep(3)
