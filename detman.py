@@ -90,7 +90,9 @@ class detman:
                 print("{} № {} Тема :{} ссылка: {}".format(self.name,tid,tname,tref))
             #result = str.xpath("//tr[@class='odd']/td[1]/text()")
     def add_order(self,tref):
+        cursor3 = self.conn.cursor()
         #добавляем заказ в закупку
+        sp_id=tref.split("/")[3]
         print("{} добавляем заказ в закупку : {}".format(self.name, BASE_URL + tref))
         r = client.get(BASE_URL +tref)
         soup = BeautifulSoup(r.content, "lxml")
@@ -132,6 +134,9 @@ class detman:
 
             headers["Referer"] = BASE_URL + form_url
             r = client.post(BASE_URL + form_url, data=form_data, headers=headers)
+            b = "update topics set last_up_time=strftime('%s','now') where id={}".format(sp_id)
+            cursor3.execute(b)
+            cursor3.close()
         else:
             print("{} ошибка asddorder {}".format(self.name,tref))
 
@@ -385,14 +390,14 @@ class detman:
                 order by user_id"""
         # ТЕСТ
         """b =  select t.id,t.name,t.user_id, u.name
-                from topics t, users u  
-                where u.id=t.user_id 
-                and (strftime('%s','now')-t.last_up_time)/60>t.interval_minutes 
-                and t.active=1 
-                and t.page>t.maxpage
-                and t.actual=1
-                and t.user_id<>222823
-                order by user_id"""
+        from topics t, users u  
+        where u.id=t.user_id 
+        and t.active=1 
+        and t.page>t.maxpage
+        and t.actual=1
+        and t.user_id=222823
+        and t.id = 87873
+        order by user_id"""
         # выбираем просроченные задания
         cursor.execute(b)
         for row in cursor.fetchall():
@@ -411,9 +416,9 @@ class detman:
             self.clear_topiс_bucket_by_good("/sp/bucket/{}/orders/".format(row[0]))
             time.sleep(3)
             self.clear_topiс_bucket_arc("/sp/bucket/{}/orders/".format(row[0]))
-            b = "update topics set last_up_time=strftime('%s','now') where id={}".format(row[0])
-            #print("{} UP {}".format(datetime.datetime.now(), row[1]))
-            cursor2.execute(b)
+
+            print("{} UP {}".format(datetime.datetime.now(), row[1]))
+
             self.conn.commit()
 
         cursor.close()
