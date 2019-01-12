@@ -388,6 +388,7 @@ class detman:
                 and t.actual=1
                 and t.user_id=222823
                 order by user_id"""
+        # maha нахуй
         # ТЕСТ
         """b =  select t.id,t.name,t.user_id, u.name
         from topics t, users u  
