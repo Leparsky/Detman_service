@@ -386,7 +386,7 @@ class detman:
                 and t.active=1 
                 and t.page>t.maxpage
                 and t.actual=1
-                and t.user_id=222823
+                /*and t.user_id=222823*/
                 order by user_id"""
         # maha нахуй
         # ТЕСТ
