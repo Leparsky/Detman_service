@@ -382,13 +382,13 @@ class detman:
         b = """ select t.id,t.name,t.user_id, u.name 
                 from topics t, users u  
                 where u.id=t.user_id 
-                and (strftime('%s','now')-t.last_up_time)/60>t.interval_minutes*(1+(t.user_id<>222823)*6)      
+                and (strftime('%s','now')-t.last_up_time)/60>t.interval_minutes    
                 and t.active=1 
                 and t.page>t.maxpage
                 and t.actual=1
                 /*and t.user_id=222823*/
                 order by user_id"""
-        # maha нахуй
+        # maha  and (strftime('%s','now')-t.last_up_time)/60>t.interval_minutes*(1+(t.user_id<>222823)*6)
         # ТЕСТ
         """b =  select t.id,t.name,t.user_id, u.name
         from topics t, users u  
