@@ -125,9 +125,12 @@ class detman:
                 form_data[field.get('name')] = ""
 
             for select in soup.find_all('select', {'name': re.compile(r'_field_')}):
-                val=select.find('option',{'value': re.compile('.')}).get('value')
-                #получаем первую опцию в списке выбора значений
-                form_data[select.get('name')] = val
+                try:
+                    val=select.find('option',{'value': re.compile('.')}).get('value')
+                    #получаем первую опцию в списке выбора значений
+                    form_data[select.get('name')] = val
+                except:
+                    print("{} ошибка при подготовке заказа : {}".format(self.name, BASE_URL + tref))
 
             form_data['delivery_place'] = 3
             form_data['photo_id'] = photo_id
@@ -386,7 +389,7 @@ class detman:
                 and t.active=1 
                 and t.page>t.maxpage
                 and t.actual=1
-                /*and t.user_id=222823*/
+                and t.user_id<>222823
                 order by user_id"""
         # maha  and (strftime('%s','now')-t.last_up_time)/60>t.interval_minutes*(1+(t.user_id<>222823)*6)
         # ТЕСТ
