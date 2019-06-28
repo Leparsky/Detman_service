@@ -389,7 +389,7 @@ class detman:
                 and t.active=1 
                 and t.page>t.maxpage
                 and t.actual=1
-                and t.user_id<>222823
+                /*and t.user_id=222823*/
                 order by user_id"""
         # maha  and (strftime('%s','now')-t.last_up_time)/60>t.interval_minutes*(1+(t.user_id<>222823)*6)
         # ТЕСТ
