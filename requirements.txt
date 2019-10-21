@@ -11,7 +11,7 @@ Jinja2==2.10
 MarkupSafe==1.0
 SQLAlchemy==1.2.9
 WTForms==2.2.1
-Werkzeug==0.14.1
+Werkzeug==0.15.3
 beautifulsoup4==4.6.0
 bs4==0.0.1
 certifi==2018.4.16
