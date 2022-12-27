@@ -23,7 +23,7 @@ lxml==4.2.3
 pip==10.0.1
 pytz==2018.5
 requests==2.19.1
-setuptools==39.0.1
+setuptools==65.5.1
 six==1.11.0
 tzlocal==1.5.1
 urllib3==1.23
